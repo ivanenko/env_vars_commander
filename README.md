@@ -7,4 +7,4 @@ Opensource and crossplatform.
 
 You can view and edit variable value by double clicking on it. If you press F3/F4, you will see variable information.
 
-Click <Create New> for new variable. Although йuite useless in Linux.
+Click <Create New> for new variable. Although quite useless in Linux.

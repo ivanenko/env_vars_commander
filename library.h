@@ -1,6 +1,4 @@
 #ifndef ENV_VARS_COMMANDER_LIBRARY_H
 #define ENV_VARS_COMMANDER_LIBRARY_H
 
-
-
 #endif

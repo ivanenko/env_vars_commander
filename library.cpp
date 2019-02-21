@@ -20,11 +20,23 @@ License along with this library; if not, write to the Free Software
 
 #include <iostream>
 #include <cstring>
+#include <string>
 #include <algorithm>
+#include <codecvt>
+#include <locale>
+#include <fstream>
+#include <sstream>
 
 #include "library.h"
 #include "wfxplugin.h"
+#include "extension.h"
+#include "plugin_utils.h"
+#include "dialogs.h"
+#include "descriptions.h"
 
+extern char **environ;
+
+#define _createstr u"/<Create New>"
 
 int gPluginNumber, gCryptoNr;
 tProgressProcW gProgressProcW = NULL;
@@ -32,11 +44,17 @@ tLogProcW gLogProcW = NULL;
 tRequestProcW gRequestProcW = NULL;
 tCryptProcW gCryptProcW = NULL;
 
-typedef std::basic_string<WCHAR> wcharstring;
+tExtensionStartupInfo *gExtensionStartupInfo = NULL;
+
 
 void DCPCALL FsGetDefRootName(char* DefRootName,int maxlen)
 {
     strncpy(DefRootName, "Env variables", maxlen);
+}
+
+void DCPCALL ExtensionInitialize(tExtensionStartupInfo* StartupInfo)
+{
+    gExtensionStartupInfo = StartupInfo;
 }
 
 int DCPCALL FsInitW(int PluginNr, tProgressProcW pProgressProc, tLogProcW pLogProc, tRequestProcW pRequestProc)
@@ -52,23 +70,40 @@ int DCPCALL FsInitW(int PluginNr, tProgressProcW pProgressProc, tLogProcW pLogPr
 HANDLE DCPCALL FsFindFirstW(WCHAR* Path, WIN32_FIND_DATAW *FindData)
 {
     memset(FindData, 0, sizeof(WIN32_FIND_DATAW));
+    memcpy(FindData->cFileName, _createstr+1, MAX_PATH);
 
     wcharstring wPath(Path);
     std::replace(wPath.begin(), wPath.end(), u'\\', u'/');
 
-
-    pResources pRes = NULL;
-    try{
-        pRes = prepare_folder_result(result, wPath == (WCHAR*)u"/");
-    } catch (std::runtime_error & e){
-        gRequestProcW(gPluginNumber, RT_MsgOK, (WCHAR*)u"Error", (WCHAR*) fromUTF8(e.what()).c_str(), NULL, 0);
+    int total = 0;
+    for(char **current = environ; *current; current++) {
+        total++;
     }
 
-    if(!pRes || pRes->nSize==0)
-        return (HANDLE)-1;
+    pResources pRes = new tResources;
+    pRes->nCount = 0;
+    pRes->nSize = 0;
+    pRes->resource_array = new WIN32_FIND_DATAW[total];
 
-    if(pRes->resource_array && pRes->nSize>0)
-        memcpy(FindData, pRes->resource_array, sizeof(WIN32_FIND_DATAW));
+    int i=0;
+    for(char **current = environ; *current; current++) {
+        pRes->nSize++;
+        std::string s(*current);
+        int nPos = s.find("=");
+        if(nPos != std::string::npos){
+            s = s.substr(0, nPos);
+        }
+
+        std::wstring_convert<std::codecvt_utf8<char16_t>, char16_t> convert;
+        std::u16string utf16 = convert.from_bytes(s);
+        size_t str_size = (MAX_PATH > utf16.size()+1)? (utf16.size()+1): MAX_PATH;
+        memcpy(pRes->resource_array[i].cFileName, utf16.data(), sizeof(WCHAR) * str_size);
+        pRes->resource_array[i].dwFileAttributes = 0;
+        pRes->resource_array[i].nFileSizeLow = 0;
+        pRes->resource_array[i].nFileSizeHigh = 0;
+
+        i++;
+    }
 
     return (HANDLE) pRes;
 }
@@ -76,6 +111,9 @@ HANDLE DCPCALL FsFindFirstW(WCHAR* Path, WIN32_FIND_DATAW *FindData)
 BOOL DCPCALL FsFindNextW(HANDLE Hdl,WIN32_FIND_DATAW *FindData)
 {
     pResources pRes = (pResources) Hdl;
+    if(!pRes)
+        return false;
+
     pRes->nCount++;
     if(pRes->nCount < pRes->nSize){
         memcpy(FindData, &pRes->resource_array[pRes->nCount], sizeof(WIN32_FIND_DATAW));
@@ -95,4 +133,132 @@ int DCPCALL FsFindClose(HANDLE Hdl){
     }
 
     return 0;
+}
+
+int DCPCALL FsGetFileW(WCHAR* RemoteName, WCHAR* LocalName, int CopyFlags, RemoteInfoStruct* ri)
+{
+    if(CopyFlags & FS_COPYFLAGS_RESUME)
+        return FS_FILE_NOTSUPPORTED;
+
+    try{
+        std::ofstream ofs;
+        //std::stringstream ofs;
+        wcharstring wRemoteName(RemoteName), wLocalName(LocalName);
+        wRemoteName = wRemoteName.substr(1);
+
+        ofs.open(toUTF8(wLocalName.data()), std::ios::binary | std::ofstream::out | std::ios::trunc);
+        if(!ofs || ofs.bad())
+            return FS_FILE_WRITEERROR;
+
+        std::string var = toUTF8(RemoteName+1);
+        char *value = getenv(var.c_str());
+        char *descr = find_descr(var.c_str());
+
+        ofs << "Variable: ";
+        ofs << var;
+        ofs << "\n\n";
+        ofs << (value==NULL)? "<empty>": value;
+        if(descr){
+            ofs << "\n\n### description ### \n";
+            ofs << descr;
+        }
+
+        if(CopyFlags & FS_COPYFLAGS_MOVE)
+            FsDeleteFileW(RemoteName);
+
+    } catch (std::runtime_error & e){
+        gRequestProcW(gPluginNumber, RT_MsgOK, (WCHAR*)u"Error", (WCHAR*) fromUTF8(e.what()).c_str(), NULL, 0);
+        return FS_FILE_READERROR;
+    }
+
+    //ofstream closes file in destructor
+    return FS_FILE_OK;
+}
+
+int DCPCALL FsPutFileW(WCHAR* LocalName,WCHAR* RemoteName,int CopyFlags) {
+    return FS_FILE_NOTSUPPORTED;
+}
+
+BOOL DCPCALL FsDeleteFileW(WCHAR* RemoteName)
+{
+    std::string var = toUTF8(RemoteName+1);
+    return unsetenv(var.c_str()) == 0;
+}
+
+int DCPCALL FsExecuteFileW(HWND MainWin, WCHAR* RemoteName, WCHAR* Verb)
+{
+    wcharstring wVerb(Verb), wRemoteName(RemoteName);
+
+    if(wVerb.find((WCHAR*)u"open") == 0){
+        wcharstring wRemote(RemoteName), wCreate((WCHAR*)_createstr);
+        if (wRemote == wCreate){
+            show_new_dialog(gExtensionStartupInfo);
+        } else {
+            std::string var = toUTF8(RemoteName+1);
+            show_edit_dialog(var, gExtensionStartupInfo);
+        }
+    }
+
+    return FS_EXEC_OK;
+}
+
+
+
+/**************************************************************************************/
+/*********************** content plugin = custom columns part! ************************/
+/**************************************************************************************/
+
+#define fieldcount 2
+char* fieldnames[fieldcount] = {"f1", "f2"};
+int fieldtypes[fieldcount] = {ft_numeric_32, ft_numeric_32};
+char* fieldunits_and_multiplechoicestrings[fieldcount] = {"", ""};
+int fieldflags[fieldcount] = {contflags_substsize, contflags_substsize};
+int sortorders[fieldcount] = {-1, -1};
+
+int DCPCALL FsContentGetSupportedField(int FieldIndex,char* FieldName,char* Units,int maxlen)
+{
+    if (FieldIndex<0 || FieldIndex>=fieldcount)
+        return ft_nomorefields;
+
+    memcpy(FieldName, fieldnames[FieldIndex], maxlen-1);
+    strcpy(Units, fieldunits_and_multiplechoicestrings[FieldIndex]);
+    return fieldtypes[FieldIndex];
+}
+
+int DCPCALL FsContentGetValueW(WCHAR* FileName, int FieldIndex, int UnitIndex, void* FieldValue, int maxlen, int flags)
+{
+    switch (FieldIndex) {
+        case 0:  // "f1"
+            *(int *)FieldValue = 543;
+            break;
+        case 1:  // "f2"
+            *(int *)FieldValue = 111;
+            //memcpy(FieldValue, "alala1", 6);
+            //strcpy((char*)FieldValue, "aaaooo");
+            //FieldValue = (char*)"alala";
+            break;
+
+        default:
+            return ft_nosuchfield;
+    }
+
+    return fieldtypes[FieldIndex];  // very important!
+}
+
+int DCPCALL FsContentGetSupportedFieldFlags(int FieldIndex)
+{
+    if (FieldIndex==-1)
+        return contflags_substsize | contflags_edit;
+    else if (FieldIndex<0 || FieldIndex>=fieldcount)
+        return 0;
+    else
+        return fieldflags[FieldIndex];
+}
+
+int DCPCALL FsContentGetDefaultSortOrder(int FieldIndex)
+{
+    if (FieldIndex<0 || FieldIndex>=fieldcount)
+        return 1;
+    else
+        return sortorders[FieldIndex];
 }

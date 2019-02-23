@@ -71,6 +71,8 @@ HANDLE DCPCALL FsFindFirstW(WCHAR* Path, WIN32_FIND_DATAW *FindData)
 {
     memset(FindData, 0, sizeof(WIN32_FIND_DATAW));
     memcpy(FindData->cFileName, _createstr+1, MAX_PATH);
+    FindData->ftCreationTime = get_now_time();
+    FindData->ftLastWriteTime = get_now_time();
 
     wcharstring wPath(Path);
     std::replace(wPath.begin(), wPath.end(), u'\\', u'/');
@@ -101,6 +103,9 @@ HANDLE DCPCALL FsFindFirstW(WCHAR* Path, WIN32_FIND_DATAW *FindData)
         pRes->resource_array[i].dwFileAttributes = 0;
         pRes->resource_array[i].nFileSizeLow = 0;
         pRes->resource_array[i].nFileSizeHigh = 0;
+        pRes->resource_array[i].ftCreationTime = get_now_time();
+        pRes->resource_array[i].ftLastWriteTime = get_now_time();
+        pRes->resource_array[i].ftLastAccessTime = get_now_time();
 
         i++;
     }
@@ -157,11 +162,13 @@ int DCPCALL FsGetFileW(WCHAR* RemoteName, WCHAR* LocalName, int CopyFlags, Remot
         ofs << "Variable: ";
         ofs << var;
         ofs << "\n\n";
-        ofs << (value==NULL)? "<empty>": value;
+        ofs <<  value; // (value==NULL)? "<empty>": value;
         if(descr){
             ofs << "\n\n### description ### \n";
             ofs << descr;
         }
+
+        ofs.flush();
 
         if(CopyFlags & FS_COPYFLAGS_MOVE)
             FsDeleteFileW(RemoteName);
@@ -208,12 +215,12 @@ int DCPCALL FsExecuteFileW(HWND MainWin, WCHAR* RemoteName, WCHAR* Verb)
 /*********************** content plugin = custom columns part! ************************/
 /**************************************************************************************/
 
-#define fieldcount 2
-char* fieldnames[fieldcount] = {"f1", "f2"};
-int fieldtypes[fieldcount] = {ft_numeric_32, ft_numeric_32};
-char* fieldunits_and_multiplechoicestrings[fieldcount] = {"", ""};
-int fieldflags[fieldcount] = {contflags_substsize, contflags_substsize};
-int sortorders[fieldcount] = {-1, -1};
+#define fieldcount 1
+char* fieldnames[fieldcount] = {"Value"};
+int fieldtypes[fieldcount] = {ft_string};
+char* fieldunits_and_multiplechoicestrings[fieldcount] = {""};
+int fieldflags[fieldcount] = {contflags_substsize};
+int sortorders[fieldcount] = {-1};
 
 int DCPCALL FsContentGetSupportedField(int FieldIndex,char* FieldName,char* Units,int maxlen)
 {
@@ -227,15 +234,18 @@ int DCPCALL FsContentGetSupportedField(int FieldIndex,char* FieldName,char* Unit
 
 int DCPCALL FsContentGetValueW(WCHAR* FileName, int FieldIndex, int UnitIndex, void* FieldValue, int maxlen, int flags)
 {
+    std::string var = toUTF8(FileName+1);
+    char *value = NULL;
     switch (FieldIndex) {
-        case 0:  // "f1"
-            *(int *)FieldValue = 543;
-            break;
-        case 1:  // "f2"
-            *(int *)FieldValue = 111;
-            //memcpy(FieldValue, "alala1", 6);
-            //strcpy((char*)FieldValue, "aaaooo");
-            //FieldValue = (char*)"alala";
+        case 0:  // "Value"
+            //*(int *)FieldValue = 333;
+            value = getenv(var.c_str());
+            if(value){
+                strncpy((char*)FieldValue, value, maxlen-1);
+            } else {
+                strncpy((char*)FieldValue, "", 1);
+            }
+
             break;
 
         default:

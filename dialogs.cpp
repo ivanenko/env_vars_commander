@@ -110,17 +110,17 @@ object DialogBox: TDialogBox
   BorderStyle = bsDialog
   Caption = 'Edit Environment variable'
   Left = 2264
-  Height = 140
+  Height = 155
   Top = 186
   Width = 432
   Anchors = [akBottom]
-  ClientHeight = 140
+  ClientHeight = 150
   ClientWidth = 432
   OnShow = DialogBoxShow
   Position = poScreenCenter
   LCLVersion = '1.6.0.4'
   object Label1: TLabel
-    Left = 8
+    Left = 10
     Height = 17
     Top = 8
     Width = 49
@@ -140,7 +140,7 @@ object DialogBox: TDialogBox
     AnchorSideBottom.Side = asrCenter
     Left = 345
     Height = 32
-    Top = 96
+    Top = 106
     Width = 75
     Anchors = [akRight, akBottom]
     Cancel = True
@@ -155,7 +155,7 @@ object DialogBox: TDialogBox
     AnchorSideBottom.Side = asrCenter
     Left = 260
     Height = 32
-    Top = 96
+    Top = 106
     Width = 75
     Anchors = [akRight, akBottom]
     Default = True
@@ -176,10 +176,9 @@ object DialogBox: TDialogBox
   object edtValue: TEdit
     Left = 8
     Height = 27
-    Top = 32
+    Top = 30
     Width = 412
     TabOrder = 2
-    Text = ''
   end
 end
 )";
@@ -198,6 +197,7 @@ intptr_t DCPCALL DlgProcEdit(uintptr_t pDlg, char *DlgItemName, intptr_t Msg, in
 
             value = getenv(gVarName.c_str());
             if(value)
+                //gExtensionInfo->SendDlgMsg(pDlg, "edtValue", DM_LISTADDSTR, (intptr_t)value, 0);
                 gExtensionInfo->SendDlgMsg(pDlg, "edtValue", DM_SETTEXT, (intptr_t)value, 0);
 
             descr = find_descr(gVarName.c_str());
@@ -232,6 +232,7 @@ void show_edit_dialog(std::string varName, tExtensionStartupInfo *pExtension)
     gExtensionInfo->DialogBoxLFM((intptr_t)dialog_edit, strlen(dialog_edit), DlgProcEdit);
 }
 
+//========== New dialog ==============
 intptr_t DCPCALL DlgProcNew(uintptr_t pDlg, char *DlgItemName, intptr_t Msg, intptr_t wParam, intptr_t lParam)
 {
     char *value = NULL, *name = NULL;

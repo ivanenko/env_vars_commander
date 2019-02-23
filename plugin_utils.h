@@ -35,13 +35,23 @@ typedef struct {
     WIN32_FIND_DATAW* resource_array;
 } tResources, *pResources;
 
+FILETIME get_now_time()
+{
+    time_t t2 = time(0);
+    int64_t ft = (int64_t) t2 * 10000000 + 116444736000000000;
+    FILETIME file_time;
+    file_time.dwLowDateTime = ft & 0xffff;
+    file_time.dwHighDateTime = ft >> 32;
+    return file_time;
+}
 
-FILETIME parse_iso_time(std::string time){
+FILETIME parse_iso_time(std::string time)
+{
     struct tm t, tz;
     strptime(time.c_str(), "%Y-%m-%dT%H:%M:%S%z", &t);
     long int gmtoff = t.tm_gmtoff;
     time_t t2 = mktime(&t) + gmtoff; //TODO gmtoff doesnt correct here
-    int64_t ft = (int64_t)t2 * 10000000 + 116444736000000000;
+    int64_t ft = (int64_t) t2 * 10000000 + 116444736000000000;
     FILETIME file_time;
     file_time.dwLowDateTime = ft & 0xffff;
     file_time.dwHighDateTime = ft >> 32;

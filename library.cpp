@@ -199,7 +199,8 @@ int DCPCALL FsExecuteFileW(HWND MainWin, WCHAR* RemoteName, WCHAR* Verb)
     if(wVerb.find((WCHAR*)u"open") == 0){
         wcharstring wRemote(RemoteName), wCreate((WCHAR*)_createstr);
         if (wRemote == wCreate){
-            show_new_dialog(gExtensionStartupInfo);
+            show_test_dialog(gExtensionStartupInfo);
+            //show_new_dialog(gExtensionStartupInfo);
         } else {
             std::string var = toUTF8(RemoteName+1);
             show_edit_dialog(var, gExtensionStartupInfo);

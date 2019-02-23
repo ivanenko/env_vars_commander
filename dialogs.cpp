@@ -110,15 +110,15 @@ object DialogBox: TDialogBox
   BorderStyle = bsDialog
   Caption = 'Edit Environment variable'
   Left = 2264
-  Height = 155
+  Height = 165
   Top = 186
   Width = 432
   Anchors = [akBottom]
-  ClientHeight = 150
+  ClientHeight = 164
   ClientWidth = 432
   OnShow = DialogBoxShow
   Position = poScreenCenter
-  LCLVersion = '1.6.0.4'
+  LCLVersion = '1.8.0.4'
   object Label1: TLabel
     Left = 10
     Height = 17
@@ -136,13 +136,10 @@ object DialogBox: TDialogBox
     ParentColor = False
   end
   object btnCancel: TBitBtn
-    AnchorSideRight.Side = asrCenter
-    AnchorSideBottom.Side = asrCenter
     Left = 345
     Height = 32
-    Top = 106
+    Top = 122
     Width = 75
-    Anchors = [akRight, akBottom]
     Cancel = True
     DefaultCaption = True
     Kind = bkCancel
@@ -150,14 +147,11 @@ object DialogBox: TDialogBox
     TabOrder = 0
     OnClick = ButtonClick
   end
-  object BitBtn2: TBitBtn
-    AnchorSideRight.Side = asrCenter
-    AnchorSideBottom.Side = asrCenter
+  object btnOK: TBitBtn
     Left = 260
     Height = 32
-    Top = 106
+    Top = 122
     Width = 75
-    Anchors = [akRight, akBottom]
     Default = True
     DefaultCaption = True
     Kind = bkOK
@@ -168,18 +162,72 @@ object DialogBox: TDialogBox
   object lblDescription: TLabel
     Left = 10
     Height = 17
-    Top = 72
+    Top = 85
     Width = 77
     Caption = ''
     ParentColor = False
   end
-  object edtValue: TEdit
+  object edtValue: TMemo
     Left = 8
-    Height = 27
+    Height = 51
     Top = 30
     Width = 412
-    TabOrder = 2
+    Lines.Strings = (
+      ''
+    )
+    TabOrder = 0
   end
+end
+)";
+
+//object edtValue: TEdit
+//        Left = 8
+//Height = 27
+//Top = 30
+//Width = 412
+//TabOrder = 2
+//end
+
+
+const char* test = R"(
+object DialogBox: TDialogBox
+  AnchorSideBottom.Side = asrBottom
+  BorderIcons = [biSystemMenu]
+  BorderStyle = bsDialog
+  Caption = 'Edit Environment variable'
+  Left = 2264
+  Height = 155
+  Top = 186
+  Width = 432
+  Anchors = [akBottom]
+  ClientHeight = 150
+  ClientWidth = 432
+  OnShow = DialogBoxShow
+  Position = poScreenCenter
+  LCLVersion = '1.8.0.4'
+  object ListBox1: TListBox
+    Left = 5
+    Height = 80
+    Top = 10
+    Width = 200
+    Columns = 2
+    ItemHeight = 23
+    ScrollWidth = 98
+    TabOrder = 1
+  end
+  object Memo1: TMemo
+    Left = 220
+    Height = 100
+    Top = 10
+    Width = 200
+    Lines.Strings = (
+      'sdfsdfsdsdfsfdsdfsdfsdfsdf:\asas\asasas\:sdfsdfsdfsdfsdfsdf:sdfsdfsdfsdfsdfsdf'
+      ''
+      'sdfsdfsfsdf ffffff'
+    )
+    TabOrder = 0
+  end
+
 end
 )";
 
@@ -216,7 +264,7 @@ intptr_t DCPCALL DlgProcEdit(uintptr_t pDlg, char *DlgItemName, intptr_t Msg, in
 
                 gExtensionInfo->SendDlgMsg(pDlg, DlgItemName, DM_CLOSE, 1, 0);
             } else if(strcmp(DlgItemName, "btnCancel")==0){
-                gExtensionInfo->SendDlgMsg(pDlg, DlgItemName, DM_CLOSE, 1, 0);
+                gExtensionInfo->SendDlgMsg(pDlg, DlgItemName, DM_CLOSE, 2, 0);
             }
 
             break;
@@ -262,4 +310,34 @@ int show_new_dialog(tExtensionStartupInfo *pExtension)
 {
     gExtensionInfo = pExtension;
     return gExtensionInfo->DialogBoxLFM((intptr_t)dialog_new, strlen(dialog_new), DlgProcEdit);
+}
+
+//============ test dialog ===========
+intptr_t DCPCALL DlgProcTest(uintptr_t pDlg, char *DlgItemName, intptr_t Msg, intptr_t wParam, intptr_t lParam)
+{
+    char *value = NULL, *name = NULL;
+
+    switch (Msg){
+        case DN_INITDIALOG:
+            gExtensionInfo->SendDlgMsg(pDlg, "ListBox1", DM_LISTADDSTR, (intptr_t)"aaaaaaaa\teeeeee", 0);
+            gExtensionInfo->SendDlgMsg(pDlg, "ListBox1", DM_LISTADDSTR, (intptr_t)"aaa\t11111", 0);
+            gExtensionInfo->SendDlgMsg(pDlg, "ListBox1", DM_LISTADDSTR, (intptr_t)"aaa\ts", 0);
+            break;
+
+        case DN_CLICK:
+            if(strcmp(DlgItemName, "btnOK")==0){
+                gExtensionInfo->SendDlgMsg(pDlg, DlgItemName, DM_CLOSE, 1, 0);
+            } else if(strcmp(DlgItemName, "btnCancel")==0){
+                gExtensionInfo->SendDlgMsg(pDlg, DlgItemName, DM_CLOSE, 3, 0);
+            }
+
+            break;
+    }
+    return 0;
+}
+
+int show_test_dialog(tExtensionStartupInfo *pExtension)
+{
+    gExtensionInfo = pExtension;
+    return gExtensionInfo->DialogBoxLFM((intptr_t)test, strlen(test), DlgProcTest);
 }

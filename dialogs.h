@@ -23,5 +23,6 @@ License along with this library; if not, write to the Free Software
 
 void show_edit_dialog(std::string varName, tExtensionStartupInfo *pExtension);
 int show_new_dialog(tExtensionStartupInfo *pExtension);
+int show_test_dialog(tExtensionStartupInfo *pExtension);
 
 #endif //ENV_VARS_COMMANDER_DIALOGS_LFM_H

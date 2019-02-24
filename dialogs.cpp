@@ -180,61 +180,11 @@ object DialogBox: TDialogBox
 end
 )";
 
-//object edtValue: TEdit
-//        Left = 8
-//Height = 27
-//Top = 30
-//Width = 412
-//TabOrder = 2
-//end
-
-
-const char* test = R"(
-object DialogBox: TDialogBox
-  AnchorSideBottom.Side = asrBottom
-  BorderIcons = [biSystemMenu]
-  BorderStyle = bsDialog
-  Caption = 'Edit Environment variable'
-  Left = 2264
-  Height = 155
-  Top = 186
-  Width = 432
-  Anchors = [akBottom]
-  ClientHeight = 150
-  ClientWidth = 432
-  OnShow = DialogBoxShow
-  Position = poScreenCenter
-  LCLVersion = '1.8.0.4'
-  object ListBox1: TListBox
-    Left = 5
-    Height = 80
-    Top = 10
-    Width = 200
-    Columns = 2
-    ItemHeight = 23
-    ScrollWidth = 98
-    TabOrder = 1
-  end
-  object Memo1: TMemo
-    Left = 220
-    Height = 100
-    Top = 10
-    Width = 200
-    Lines.Strings = (
-      'sdfsdfsdsdfsfdsdfsdfsdfsdf:\asas\asasas\:sdfsdfsdfsdfsdfsdf:sdfsdfsdfsdfsdfsdf'
-      ''
-      'sdfsdfsfsdf ffffff'
-    )
-    TabOrder = 0
-  end
-
-end
-)";
-
 extern char **environ;
 tExtensionStartupInfo *gExtensionInfo = NULL;
 std::string gVarName;
 
+//============== Edit dialog ========================
 intptr_t DCPCALL DlgProcEdit(uintptr_t pDlg, char *DlgItemName, intptr_t Msg, intptr_t wParam, intptr_t lParam)
 {
     char *value = NULL, *descr = NULL;
@@ -280,7 +230,7 @@ void show_edit_dialog(std::string varName, tExtensionStartupInfo *pExtension)
     gExtensionInfo->DialogBoxLFM((intptr_t)dialog_edit, strlen(dialog_edit), DlgProcEdit);
 }
 
-//========== New dialog ==============
+//============== New dialog ==================
 intptr_t DCPCALL DlgProcNew(uintptr_t pDlg, char *DlgItemName, intptr_t Msg, intptr_t wParam, intptr_t lParam)
 {
     char *value = NULL, *name = NULL;
@@ -310,34 +260,4 @@ int show_new_dialog(tExtensionStartupInfo *pExtension)
 {
     gExtensionInfo = pExtension;
     return gExtensionInfo->DialogBoxLFM((intptr_t)dialog_new, strlen(dialog_new), DlgProcEdit);
-}
-
-//============ test dialog ===========
-intptr_t DCPCALL DlgProcTest(uintptr_t pDlg, char *DlgItemName, intptr_t Msg, intptr_t wParam, intptr_t lParam)
-{
-    char *value = NULL, *name = NULL;
-
-    switch (Msg){
-        case DN_INITDIALOG:
-            gExtensionInfo->SendDlgMsg(pDlg, "ListBox1", DM_LISTADDSTR, (intptr_t)"aaaaaaaa\teeeeee", 0);
-            gExtensionInfo->SendDlgMsg(pDlg, "ListBox1", DM_LISTADDSTR, (intptr_t)"aaa\t11111", 0);
-            gExtensionInfo->SendDlgMsg(pDlg, "ListBox1", DM_LISTADDSTR, (intptr_t)"aaa\ts", 0);
-            break;
-
-        case DN_CLICK:
-            if(strcmp(DlgItemName, "btnOK")==0){
-                gExtensionInfo->SendDlgMsg(pDlg, DlgItemName, DM_CLOSE, 1, 0);
-            } else if(strcmp(DlgItemName, "btnCancel")==0){
-                gExtensionInfo->SendDlgMsg(pDlg, DlgItemName, DM_CLOSE, 3, 0);
-            }
-
-            break;
-    }
-    return 0;
-}
-
-int show_test_dialog(tExtensionStartupInfo *pExtension)
-{
-    gExtensionInfo = pExtension;
-    return gExtensionInfo->DialogBoxLFM((intptr_t)test, strlen(test), DlgProcTest);
 }

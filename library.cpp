@@ -36,6 +36,7 @@ License along with this library; if not, write to the Free Software
 
 extern char **environ;
 
+#define _plugin_name "Env variables"
 #define _createstr u"/<Create New>"
 
 int gPluginNumber, gCryptoNr;
@@ -44,17 +45,17 @@ tLogProcW gLogProcW = NULL;
 tRequestProcW gRequestProcW = NULL;
 tCryptProcW gCryptProcW = NULL;
 
-tExtensionStartupInfo *gExtensionStartupInfo = NULL;
+tExtensionStartupInfo gExtensionStartupInfo;
 
 
 void DCPCALL FsGetDefRootName(char* DefRootName,int maxlen)
 {
-    strncpy(DefRootName, "Env variables", maxlen);
+    strncpy(DefRootName, _plugin_name, maxlen);
 }
 
 void DCPCALL ExtensionInitialize(tExtensionStartupInfo* StartupInfo)
 {
-    gExtensionStartupInfo = StartupInfo;
+    memcpy(&gExtensionStartupInfo, StartupInfo, sizeof(tExtensionStartupInfo));
 }
 
 int DCPCALL FsInitW(int PluginNr, tProgressProcW pProgressProc, tLogProcW pLogProc, tRequestProcW pRequestProc)
@@ -199,11 +200,10 @@ int DCPCALL FsExecuteFileW(HWND MainWin, WCHAR* RemoteName, WCHAR* Verb)
     if(wVerb.find((WCHAR*)u"open") == 0){
         wcharstring wRemote(RemoteName), wCreate((WCHAR*)_createstr);
         if (wRemote == wCreate){
-            show_test_dialog(gExtensionStartupInfo);
-            //show_new_dialog(gExtensionStartupInfo);
+            show_new_dialog(&gExtensionStartupInfo);
         } else {
             std::string var = toUTF8(RemoteName+1);
-            show_edit_dialog(var, gExtensionStartupInfo);
+            show_edit_dialog(var, &gExtensionStartupInfo);
         }
     }
 
